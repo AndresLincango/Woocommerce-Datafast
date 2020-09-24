@@ -68,6 +68,96 @@ class WC_Datafast_Requester
             $current_transaction = WC_Datafast_Database_Helper::select_order($orderDataJSON->ndc, 'transaction');
             if (strlen($current_transaction) > 0) {
                 if ($orderDataJSON->result->code == '000.100.112') {
+                    $order_id = WC_Datafast_Database_Helper::select_order($callback_id, 'order_meta');
+                    $order_obj = new WC_Order($order_id);
+                    $fields_meta_df = $order_obj->get_meta_data();
+
+                    // Here we check if the field exists or not. If isn't set we add it to metadata.
+                    // In this case, we are using a woocommerce module named admin field something to add metafields.
+                    $billing_months_found = false;
+                    $billing_months_is_set = false;
+                    $billing_months = '';
+                    $billing_credit_type_found = false;
+                    $billing_credit_type_is_set = false;
+                    $credit_type = '';
+                    $billing_interests_found = false;
+                    $billing_total_no_int = false; // Original total value
+
+                    $payment_order_data = $order_obj->get_data();
+                    $total_no_int = $payment_order_data['total'];
+
+                    try{
+                        $billing_months = $orderDataJSON->recurring->numberOfInstallments;
+                        $billing_months_is_set = true;
+                    }catch (Exception $e){
+                        print $e;
+                    }
+
+                    try{
+                        $credit_type = WC_Datafast_Card_Data::get_credit_type($orderDataJSON->customParameters->SHOPPER_TIPOCREDITO);
+                        $billing_credit_type_is_set = true;
+                    }catch (Exception $e){
+                        print $e;
+                    }
+
+
+                    foreach ($fields_meta_df as $field_meta_df){
+                        $field_current_data = $field_meta_df->get_data();
+
+                        if ($field_current_data['key'] == 'billing_meses' and $billing_months_found == false){
+                            $order_obj->update_meta_data($field_current_data['key'],
+                                $orderDataJSON->recurring->numberOfInstallments, $field_current_data['id']);
+                            $order_obj->save_meta_data();
+                            $billing_months_found = true;
+                        }
+
+                        if ($field_current_data['key'] == 'billing_credito' and $billing_credit_type_found == false and
+                            $billing_credit_type_is_set == true){
+                            $order_obj->update_meta_data($field_current_data['key'],
+                                $credit_type, $field_current_data['id']);
+                            $order_obj->save_meta_data();
+                            $billing_credit_type_found = true;
+                        }
+
+                        if ($field_current_data['key'] == 'billing_interest' and $billing_interests_found == false){
+                            $order_obj->update_meta_data($field_current_data['key'], '$' . $orderDataJSON->resultDetails->Interest, $field_current_data['id']);
+                            $order_obj->save_meta_data();
+                            $billing_interests_found = true;
+                        }
+
+                        if ($field_current_data['key'] == 'billing_tot' and $billing_total_no_int == false){
+                            $order_obj->update_meta_data($field_current_data['key'], '$' . $total_no_int, $field_current_data['id']);
+                            $order_obj->save_meta_data();
+                            $billing_total_no_int = true;
+                        }
+                    }
+                    // Updating the metadata allows woocommerce to show this fields in the order details.
+                    if($billing_months_found == false and $billing_months_is_set == true){
+                        $order_obj->add_meta_data('billing_meses', $billing_months);
+                    }
+                    if($billing_credit_type_found == false and $billing_credit_type_is_set == true){
+                        $order_obj->add_meta_data('billing_credito', $credit_type);
+                    }
+                    if($billing_interests_found == false){
+                        $order_obj->add_meta_data('billing_interest', '$' . $orderDataJSON->resultDetails->Interest);
+                    }
+                    if($billing_total_no_int == false){
+                        $order_obj->add_meta_data('billing_tot', '$' . $total_no_int);
+                    }
+
+                    $card_name = WC_Datafast_Card_Data::get_card_name($orderDataJSON->resultDetails->CardType);
+                    try {
+                        $order_obj->set_payment_method_title($card_name);
+                    } catch (WC_Data_Exception $e) {
+                        print $e;
+                    }
+                    try {
+                        $order_obj->set_total($orderDataJSON->resultDetails->TotalAmount);
+                    } catch (WC_Data_Exception $e) {
+                        print $e;
+                    }
+                    $order_obj->save();
+
                     WC_Datafast_Database_Helper::update_transaction_order($current_transaction, $_SERVER['REMOTE_ADDR'], 'success',
                         $orderDataJSON->result->code, $orderDataJSON->result->description, $orderDataJSON->descriptor,
                         $orderDataJSON->resultDetails->RequestId, $orderDataJSON->resultDetails->RiskFraudStatusCode,
@@ -83,7 +173,7 @@ class WC_Datafast_Requester
                         $orderDataJSON->resultDetails->ReferenceNo, $resource_path, $orderDataJSON->paymentBrand,
                         $orderDataJSON->amount, $orderDataJSON->card->bin, $orderDataJSON->card->last4Digits,
                         $orderDataJSON->card->holder, $orderDataJSON->card->expiryMonth,
-                        $orderDataJSON->card->expiryYear, $date, $orderDataJSON->timestamp);
+                        $orderDataJSON->card->expiryYear, $date, $orderDataJSON->timestamp, $billing_months, $credit_type);
                 } else {
                     WC_Datafast_Database_Helper::update_transaction_order($current_transaction, $_SERVER['REMOTE_ADDR'], 'failure',
                         $orderDataJSON->result->code, $orderDataJSON->result->description, $orderDataJSON->descriptor,
@@ -118,12 +208,3 @@ class WC_Datafast_Requester
         );
     }
 }
-
-
-//WC_Datafast_Database_Helper::update_transaction_order($current_transaction, 'success',
-//    $orderDataJSON->result->code, $orderDataJSON->result->description, $resource_path,
-//    $orderDataJSON->buildNumber, $orderDataJSON->id, $orderDataJSON->paymentBrand, $orderDataJSON->amount,
-//    $orderDataJSON->currency, $orderDataJSON->resultDetails->RiskStatusCode,
-//    $orderDataJSON->resultDetails->RequestId, $orderDataJSON->resultDetails->OrderId,
-//    $orderDataJSON->card->bin, $orderDataJSON->card->last4Digits, $orderDataJSON->card->holder,
-//    $orderDataJSON->card->expiryMonth, $orderDataJSON->card->expiryYear, $date, $orderDataJSON->timestamp);
