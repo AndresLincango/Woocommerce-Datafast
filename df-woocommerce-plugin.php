@@ -6,7 +6,7 @@ Plugin URI: https://inti.ec
 Description: Módulo para pagos con tarjetas de crédito a través de Datafast
 Version: 1.0
 Author: Andrés Lincango
-Author URI: http://inti.ec
+Author URI: https://inti.ec
 Text Domain: df_woocommerce
 License: GPLv3
 */
@@ -18,17 +18,10 @@ include(dirname(__FILE__) . '/includes/df-woocommerce-checker.php');
 include(dirname(__FILE__) . '/includes/df-woocommerce-requester.php');
 include(dirname(__FILE__) . '/includes/df-woocommerce-callback.php');
 include(dirname(__FILE__) . '/includes/df-woocommerce-data-dump.php');
+include(dirname(__FILE__) . '/includes/df-woocommerce-card_data.php');
 register_activation_hook(__FILE__, array('WC_Datafast_Database_Helper', 'create_database'));
 register_deactivation_hook(__FILE__, array('WC_Datafast_Database_Helper', 'delete_database'));
 
-//require( dirname( __FILE__ ) . '/includes/df-woocommerce-refund.php' );
-
-//function datafast_woocommerce_order_refunded($order_id, $refund_id) {
-//  $refund = new WC_Datafast_Refund();
-//  $refund->refund($order_id);
-//}
-//
-//add_action( 'woocommerce_order_refunded', 'datafast_woocommerce_order_refunded', 10, 2 );
 
 if (!function_exists('df_woocommerce_plugin')) {
     function df_woocommerce_plugin()
@@ -93,14 +86,50 @@ if (!function_exists('df_woocommerce_plugin')) {
                 $datafastObj = new WC_Gateway_Datafast();
                 $server_callback_url = $datafastObj->datafast_woocommerce_url_success . "/datafast_action/";
                 ?>
-
+                <style>
+                    .brand_field {padding: 0px !important; height:35px;}
+                    .installment_select {padding: 0px 10px !important; height:35px; width: 50px; margin-bottom: 10px;}
+                    .credit_field {padding: 0px 10px !important; height:35px;margin-bottom: 20px;}
+                    .form_inti_style {border: 2px solid #0274be; padding: 25px 25px 10px;}
+                </style>
                 <script type="text/javascript"
                         src="https://www.datafast.com.ec/js/dfAdditionalValidations1.js"></script>
                 <script src="https://test.oppwa.com/v1/paymentWidgets.js?checkoutId=<?php echo $order_transaction_id; ?>"></script>
-                <form action="http://import.com/datafast_action/" class="paymentWidgets"
-                      data-brands="VISA MASTER DINERS">
+                <form action="https://import.com/datafast_action/" class="paymentWidgets"
+                    data-brands="VISA MASTER DINERS DISCOVER AMEX">
+                    <!--form action="http://import.com/datafast_action/" class="paymentWidgets" -->
                 </form>
+                <script type="text/javascript">
+                        var wpwlOptions = {
+                            onReady: function(){
+                                var labelDiferidoHtml = '<div class="wpwl-label wpwl-label-custom" style="display:inline-block">Diferidos</div>';
+                                var diferidoSelect = '<div class="wpwl-wrapper wpwl-wrapper-custom wpwl-installment" style="display:inline-block">' +
+                                    '<select class="installment_select" name="recurring.numberOfInstallments"><option value="0">0</option><option value="3">3</option>' +
+                                    '<option value="6">6</option></select></div>';
+                                var labelCreditoHtml = '<div class="wpwl-label wpwl-label-custom" style="display:inline-block">Tipo de Crédito</div>';
+                                var tipocredito =
+                                    '<div class="wpwl-wrapper wpwl-wrapper-custom" style="display:inline-block">' +
+                                    '<select class="credit_field" name="customParameters[SHOPPER_TIPOCREDITO]">' +
+                                    '<option value="00">Corriente</option>' +
+                                    '<option value="02">Dif. Con Intereses</option>' +
+                                    '</div>';
+                                var datafast = '<br/><br/><img src="https://www.datafast.com.ec/images/verified.png" style="display:block;margin:0 auto,width:100%;">';
+                                var wpwl_button = document.getElementsByClassName("wpwl-button")[0];
 
+                                jQuery(labelDiferidoHtml).insertBefore(wpwl_button);
+                                jQuery(diferidoSelect).insertBefore(wpwl_button);
+                                jQuery(labelCreditoHtml).insertBefore(wpwl_button);
+                                jQuery(tipocredito).insertBefore(wpwl_button);
+                                jQuery(datafast).insertBefore(wpwl_button);
+
+                                var control_brand = document.getElementsByClassName("wpwl-control-brand")[0];
+                                control_brand.setAttribute('class','brand_field');
+                            },
+                            style: "plain",
+                            locale: "es",
+                            labels: {cvv: "CVV", cardHolder: "Nombres (Igual que en la tarjeta)"},
+                        }
+                </script>
                 <?php
             }
 
