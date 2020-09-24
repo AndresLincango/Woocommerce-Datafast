@@ -11,8 +11,25 @@ class WC_Datafast_Data_Dump
         $id_number = '0999999999';
         $fields_meta_df = $order_obj->get_meta_data();
 
-        $BASE0 = 0.0;
-        $BASEIMP = $order['total'] - $order['total_tax'];
+        $i = 0;
+        $cart_items = '';
+        $base_imp = 0;
+        foreach ($order["line_items"] as $item){
+            $product = $item->get_product();
+            $cart_items .= "&cart.items[".$i."].name=".$product->get_name();
+            if (strlen($product->get_description()) > 0){
+                $cart_items .= "&cart.items[".$i."].description=".$product->get_description();
+            }else{
+                $cart_items .= "&cart.items[".$i."].description=No Hay";
+            }
+            $cart_items .= "&cart.items[".$i."].price=".$product->get_price();
+            $cart_items .= "&cart.items[".$i."].quantity=".$item->get_quantity();
+            $base_imp = $base_imp + $item->get_subtotal();
+            $i++;
+        }
+
+        $BASE0 = $order['shipping_total'];
+        $BASEIMP = $base_imp;
         $IVA = $order['total_tax'];
 
         foreach ($fields_meta_df as $field_meta_df){
@@ -50,19 +67,7 @@ class WC_Datafast_Data_Dump
             "&customParameters[SHOPPER_VAL_BASE0]=" . $BASE0 .
             "&customParameters[SHOPPER_VAL_BASEIMP]=" . $BASEIMP .
             "&customParameters[SHOPPER_VAL_IVA]=" . $IVA;
-        $i = 0;
-        foreach ($order["line_items"] as $item){
-            $product = $item->get_product();
-            $data .= "&cart.items[".$i."].name=".$product->get_name();
-            if (strlen($product->get_description()) > 0){
-                $data .= "&cart.items[".$i."].description=".$product->get_description();
-            }else{
-                $data .= "&cart.items[".$i."].description=No Hay";
-            }
-            $data .= "&cart.items[".$i."].price=".$product->get_price();
-            $data .= "&cart.items[".$i."].quantity=".$item->get_quantity();
-            $i++;
-        }
+        $data .= $cart_items;
         $data .= "&customParameters[SHOPPER_VERSIONDF]=2";
         $data .= "&testMode=EXTERNAL";
         return $data;
