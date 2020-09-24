@@ -8,3 +8,6 @@ Requerimientos:
 
 Para soporte adicional contactar al siguiente email:
 andres@inti.ec
+
+inti.ec
+Repositorio Git: https://github.com/AndresLincango/Woocommerce-Datafast
