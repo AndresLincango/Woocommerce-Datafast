@@ -43,7 +43,10 @@ class WC_Datafast_Database_Helper
                payment_brand varchar(20),
                amount varchar(20),
                currency varchar(10) default "USD",
-
+               
+               meses varchar(8),
+               tipo_credito varchar(25),             
+               
                card_bin varchar(15),
                card_last_4 varchar(10),
                card_holder varchar(250),
@@ -149,7 +152,7 @@ class WC_Datafast_Database_Helper
                                                     $card_type, $acquirer_response, $action, $risk_order_id,
                                                     $reference_no, $resource_path, $payment_brand, $amount, $card_bin,
                                                     $card_last_4, $card_holder, $expiry_month, $expiry_year,
-                                                    $date_updated, $date_payment_done)
+                                                    $date_updated, $date_payment_done, $meses='-', $tipo_credito='-')
     {
         global $wpdb;
         $table_name = $wpdb->prefix . 'datafast_plugin';
@@ -165,7 +168,7 @@ class WC_Datafast_Database_Helper
             'resource_path' => $resource_path, 'payment_brand' => $payment_brand, 'amount' => $amount,
             'card_bin' => $card_bin, 'card_last_4' => $card_last_4, 'card_holder' => $card_holder,
             'expiry_month' => $expiry_month, 'expiry_year' => $expiry_year, 'date_updated' => $date_updated,
-            'date_payment_done' => $date_payment_done),
+            'date_payment_done' => $date_payment_done, 'meses' => $meses, 'tipo_credito' => $tipo_credito),
             array('transaction_id' => $transaction_id), array(
                 '"' . $user_ip . '"',
                 '"' . $status . '"',
@@ -203,6 +206,8 @@ class WC_Datafast_Database_Helper
                 "'" . $expiry_year . "'",
                 "'" . $date_updated . "'",
                 "'" . $date_payment_done . "'",
+                "'" . $meses . "'",
+                "'" . $tipo_credito . "'",
             ), array('"' . $transaction_id . '"'));
 
         if ($result == 0) {
@@ -232,16 +237,20 @@ class WC_Datafast_Database_Helper
                 foreach ($rows as $row) {
                     $required_id = $row->transaction_id;
                 }
-            } else {
+            } elseif ($return_type == 'order_transaction') {
                 //Returns order_id given a transaction_id
                 $rows = $wpdb->get_results("SELECT * FROM $table_name where transaction_id = '$requested_id' and status = 'success'", OBJECT);
                 foreach ($rows as $row) {
                     $required_id = $row->order_id;
                 }
+            }else{
+                //Returns order_id given a transaction_id with 'checked' status
+                $rows = $wpdb->get_results("SELECT * FROM $table_name where transaction_id = '$requested_id' and status = 'checked'", OBJECT);
+                foreach ($rows as $row) {
+                    $required_id = $row->order_id;
+                }
             }
-
         }
-
         return $required_id;
     }
 }
