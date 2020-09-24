@@ -27,10 +27,17 @@ function callback_datafast_url_handler()
                         exit();
                     }
                 } else {
-                    wc_add_notice('No se pudo procesar tu pago: ' . $callback_response->resultDetails->ExtendedDescription .
-                        '. Si tu problema persiste, contácta tu emisor de tarjeta de crédito', 'error');
-                    wp_safe_redirect($order_url);
-                    exit();
+                    if ($callback_response->resultDetails->Response == '05'){
+                        wc_add_notice('No se pudo procesar tu pago: ' . $callback_response->resultDetails->ExtendedDescription .
+                            ' No se pudo recibir respuesta del banco a Datafast. Si tu problema persiste, contácta tu emisor de tarjeta de crédito', 'error');
+                        wp_safe_redirect($order_url);
+                        exit();
+                    }else {
+                        wc_add_notice('No se pudo procesar tu pago: ' . $callback_response->resultDetails->ExtendedDescription .
+                            '. Si tu problema persiste, contácta tu emisor de tarjeta de crédito', 'error');
+                        wp_safe_redirect($order_url);
+                        exit();
+                    }
                 }
             }else{
                 wc_add_notice('No se pudo procesar tu pago: Tu orden por medio de Datafast ha caducado. Intenta nuevamente.', 'error');
@@ -46,7 +53,6 @@ function callback_datafast_url_handler()
                 'error');
             wp_safe_redirect($order_url);
             exit();
-
         }
     }
 }
